@@ -1,11 +1,11 @@
 # sars_2_plot
 A small python tool to read german SARS-CoV-2 counts from RKI servers and plot them.
 
-1.) Load and parse a HTML page to get link to spreadsheet file.
-2.) Load and parse spreadsheet file to get time series of SARS-2 infections and deaths in Germany.
-3.) Load latest values from different HTML page (if needed).
-4.) Calculate differences and means per day and week
-5.) Show plot as SVG in local browser
+# Load and parse a HTML page to get link to spreadsheet file.
+# Load and parse spreadsheet file to get time series of SARS-2 infections and deaths in Germany.
+# Load latest values from different HTML page (if needed).
+# Calculate differences and means per day and week
+# Show plot as SVG in local browser
 
 ## SW requirements
 * Data structures for "relational" or "labeled" data
