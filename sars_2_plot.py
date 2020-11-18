@@ -319,12 +319,12 @@ class classCovid:
     chart = pygal.Line()
     chart.title = "SARS-CoV-2 Infektionen Deutschland"
     chart.x_labels = self.dates
-    chart.add( 'per day', y2 )
-    chart.add( 'change', y3 )
-    chart.add( '7 day mean', y4 )
-    chart.add( 'mean change', y5 )
+    chart.add( '1. Δ inf./day',   y2 )
+    chart.add( '2. 7 day Ø of 1', y4 )
+    chart.add( '3. week Δ of 1',  y3 )
+    chart.add( '4. 7 day Ø of 3', y5 )
     chart.render_to_file( 'covid.html' )
-    chart.render_in_browser( browser='firefox' )
+    chart.render_in_browser()
 
   def plot_plotly( self ):
     chart = plotly.express.line( self.counts, 
