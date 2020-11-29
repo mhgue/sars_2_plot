@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
 # SW requirements:
 #   Data structures for "relational" or "labeled" data
 #     apt-get install python3-pandas python3-pandas-lib
@@ -13,9 +21,18 @@
 #   RFC 3986 compliant replacement for urlparse (Python 3)
 #     apt-get install python3-uritools
 #
-# Get new infections per day in germany:
+# Get new infections and victims per day in Germany:
 #   https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Kum_Tab.xlsx
 #   https://www.zdf.de/nachrichten/panorama/coronavirus-rki-neuinfektionen-106.html
+#   https://www.rki.de/DE/Content/Infekt/SurvStat/survstat_node.html
+#   https://survstat.rki.de/Content/Query/Create.aspx
+# Arcgis
+#   https://experience.arcgis.com/experience/478220a4c454480e823b17327b2bf1d4
+#
+# Get mobility data
+#   https://www.covid-19-mobility.org/de/current-mobility/
+# TUM
+#   https://www.in.tum.de/news-single-view/article/teilen-covid-19-real-time-tracking/
 #
 # see
 #   https://www.datacamp.com/community/tutorials/python-excel-tutorial
@@ -54,6 +71,8 @@ import pygal
 #import holoviews
 # Own little helpers (optional)
 #import helper
+# Read data from ArcGIS feature servers
+import arcgis_hub
 
 # RKI data is handcrafted and thus sometimes inconsistent
 # => do check and correct if possible
@@ -101,7 +120,7 @@ def mean_list( lin, step=2 ):
     mean = 0
     for m in range(step):
       mean = mean + lin[n-m]
-    lout[n] = mean/step
+    lout[n] = round(mean/step)
     n=n-1
   return lout
 
@@ -162,6 +181,35 @@ class classCovid:
       assert death > self.deaths[-1]
       self.deaths.append( death )
       if self.verb: print( self.dates[-1], self.counts[-1], self.counts[-1]-self.counts[-2], 
+                 '(', self.deaths[-1], ',', self.deaths[-1]-self.deaths[-2], ')' )
+
+  # Sometimes RKI is lazy in updating XLS so let's check arcgis feature server
+  def get_latest_arcgis( self ):
+    arc = arcgis_hub.arcgis_hub()
+    # Do some consistecy checks
+    arc.check()
+    # Total infected germans until "now"
+    arc_counts2 = arc.get_current_total_cases()
+    arc_count_delta = arc.get_current_new_cases()
+    arc_counts1 = arc_counts2 - arc_count_delta
+    # Total german victims until "now"
+    arc_deaths2 = arc.get_current_total_deaths()
+    arc_death_delta = arc.get_current_new_deaths()
+    arc_deaths1 = arc_deaths2 - arc_death_delta
+    # Check if these are new counts
+    if (self.counts[-1] < arc_counts2) or (self.deaths[-1] < arc_deaths2):
+      if (self.counts[-1] < arc_counts1) or (self.deaths[-1] < arc_deaths1):
+        self.dates.append( self.dates[-1]+datetime.timedelta(days=1) )
+        self.counts.append( arc_counts1 )
+        self.deaths.append( arc_deaths1 )
+        if self.verb:
+          print( "Added:\n", self.dates[-1], self.counts[-1], self.counts[-1]-self.counts[-2], 
+                 '(', self.deaths[-1], ',', self.deaths[-1]-self.deaths[-2], ')' )
+      self.dates.append( self.dates[-1]+datetime.timedelta(days=1) )
+      self.counts.append( arc_counts2 )
+      self.deaths.append( arc_deaths2 )
+      if self.verb:
+        print( "Added:\n", self.dates[-1], self.counts[-1], self.counts[-1]-self.counts[-2], 
                  '(', self.deaths[-1], ',', self.deaths[-1]-self.deaths[-2], ')' )
 
   def get_rki_internal_link( self, uri ):
@@ -315,10 +363,11 @@ class classCovid:
     y3 = diff_list( y2, 7 )  # change of infections per day within one week
     y4 = mean_list( y2, 7 )  # 7 day mean of infections per day
     y5 = mean_list( y3, 7 )  # 7 day mean of change
+    one_day = datetime.timedelta(days=1)  # Show day of cases occurring not of report
 
     chart = pygal.Line()
-    chart.title = "SARS-CoV-2 Infektionen Deutschland"
-    chart.x_labels = self.dates
+    chart.title = "Infections/Victims SARS-CoV-2 Germany"
+    chart.x_labels = [(i-one_day).strftime("%a, %d %b") for i in self.dates]
     chart.add( '1. Δ inf./day',   y2 )
     chart.add( '2. 7 day Ø of 1', y4 )
     chart.add( '3. week Δ of 1',  y3 )
@@ -328,7 +377,7 @@ class classCovid:
 
   def plot_plotly( self ):
     chart = plotly.express.line( self.counts, 
-        x="date", y="new", title="SARS-CoV-2 Infektionen Deutschland" )
+        x="date", y="new", title="Infections/Victims SARS-CoV-2 Germany" )
     chart.show()
 
 def main():
@@ -348,6 +397,7 @@ def main():
   xlsx_file = covid.get_file( xlsx_link )
   covid.parse_rki_xls()
   covid.get_latest_entry( 'https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Fallzahlen.html' )
+  covid.get_latest_arcgis()
   #covid.plot_pyplot()
   covid.plot_pygal()
   #covid.plot_plotly()
