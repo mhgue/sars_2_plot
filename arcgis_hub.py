@@ -17,11 +17,18 @@
 #   http://ec2-54-204-216-109.compute-1.amazonaws.com:6080/arcgis/sdk/rest/ms_dyn_query.html
 #
 
-import copy,json
+import copy,json,sys
 import urllib3
 import uritools
 import pprint
     
+def eprint(*args, **kwargs):
+  print(*args, file=sys.stderr, **kwargs)
+
+def are_values_equal( case, val1, val2 ):
+  if (val1 != val2):
+    eprint( "Inconsistent %s: %d != %d" % (case,val1,val2) )
+
 # Read data from ArcGIS feature servers
 class arcgis_hub:
   def __init__( self ):
@@ -60,7 +67,12 @@ class arcgis_hub:
     except urllib3.exceptions.HTTPError as e:
       print( e.reason, uri )
       sys.exit(-1)
-    self.reply = json.loads( request.data )
+    try:
+      self.reply = json.loads( request.data )
+    except json.JSONDecodeError as e:
+      print( e.reason, uri )
+      # May be HTML error e.g. <title>404 - File or directory not found.</title>
+      sys.exit(-1)
 
   # The base query of all others
   def __default_query( self ):
@@ -199,8 +211,10 @@ class arcgis_hub:
     self.print()
 
   def check( self ):
-    assert self.get_current_total_cases() == self.get_current_total_cases_2()
-    assert self.get_current_total_deaths() == self.get_current_total_deaths_2()
+    are_values_equal( "total cases", self.get_current_total_cases(), self.get_current_total_cases_2() )
+    are_values_equal( "total deaths", self.get_current_total_deaths(), self.get_current_total_deaths_2() )
+    assert abs(self.get_current_total_cases() - self.get_current_total_cases_2()) < 10
+    assert abs(self.get_current_total_deaths() - self.get_current_total_deaths_2()) < 10
 
   def print( self ):
     self.pp.pprint( self.reply )
