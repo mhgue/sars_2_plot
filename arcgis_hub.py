@@ -36,14 +36,15 @@ class arcgis_hub:
     self.uri_dict={
         # https://npgeo-corona-npgeo-de.hub.arcgis.com/datasets/dd4580c810204019a7b8eb3e0b329dd6_0
         'rki covid19':'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query',
-        'rki covid19 refdate':'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Covid19_Refdate/FeatureServer/0/query',
-        'rki covid19 recovered':'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19_Recovered_BL/FeatureServer/0/query',
         # https://npgeo-corona-npgeo-de.hub.arcgis.com/datasets/917fc37a709542548cc3be077a786c17_0
         'rki landkreis':'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Landkreisdaten/FeatureServer/0/query',
         # https://npgeo-corona-npgeo-de.hub.arcgis.com/datasets/ef4b445a53c1406892257fe63129a8ea_0
         'rki bundesland':'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/Coronafälle_in_den_Bundesländern/FeatureServer/0/query',
         # https://npgeo-corona-npgeo-de.hub.arcgis.com/app/e6acbf22cc4f4b85949f59734244ba71
-        'who europa':'https://services.arcgis.com/5T5nSi527N4F7luB/arcgis/rest/services/EURO_COVID19_Current_Ancillary/FeatureServer/0/query'
+        'who europa':'https://services.arcgis.com/5T5nSi527N4F7luB/arcgis/rest/services/EURO_COVID19_Current_Ancillary/FeatureServer/0/query',
+        
+        'rki covid19 refdate':'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Covid19_Refdate/FeatureServer/0/query',
+        'rki covid19 recovered':'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19_Recovered_BL/FeatureServer/0/query'
         }
     self.user_agent = {'user-agent': 'IE 9/Windows: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)'}
     self.http = urllib3.PoolManager( 10, headers=self.user_agent )

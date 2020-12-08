@@ -396,7 +396,8 @@ def main():
       'https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Kum_Tab.xlsx' )
   xlsx_file = covid.get_file( xlsx_link )
   covid.parse_rki_xls()
-  covid.get_latest_entry( 'https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Fallzahlen.html' )
+  covid.get_latest_entry(
+      'https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Fallzahlen.html' )
   covid.get_latest_arcgis()
   #covid.plot_pyplot()
   covid.plot_pygal()
