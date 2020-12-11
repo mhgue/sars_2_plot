@@ -21,13 +21,20 @@ import copy,json,sys
 import urllib3
 import uritools
 import pprint
-    
+from collections.abc import Iterable
+from numbers import Number
+
 def eprint(*args, **kwargs):
   print(*args, file=sys.stderr, **kwargs)
 
-def are_values_equal( case, val1, val2 ):
-  if (val1 != val2):
-    eprint( "Inconsistent %s: %d != %d" % (case,val1,val2) )
+def are_values_equal( case, vals, err = 3 ):
+  assert isinstance( vals, Iterable )
+  assert len(vals) >= 2
+  assert isinstance( vals[0], Number )
+  for v in vals:
+    if (v != vals[0]):
+      eprint( "Inconsistent %s: %d != %d" % (case,v,vals[0]) )
+    assert abs(v-vals[0]) < err
 
 # Read data from ArcGIS feature servers
 class arcgis_hub:
@@ -103,19 +110,34 @@ class arcgis_hub:
     assert 'value' in self.reply['features'][0]['attributes']
     return int(self.reply['features'][0]['attributes']['value'])
 
+  def __parse_field_names( self ):
+    assert 'fields' in self.reply
+    assert isinstance( self.reply['fields'], list )
+    d = dict()
+    for f in self.reply['fields']:
+      d[f['alias']] = f
+      d[f['name']] = f
+    return d
+
   ###################################################################
   # Examples of concrete requests:
 
   # Total amount of cases reported until now
   def get_current_total_cases( self ):
     self.__default_query()
-    self.__statistics_query_type_field( 'sum', 'cases' )
-    self.__get( 'rki landkreis' )
+    self.__statistics_query_type_field( 'sum', 'Fallzahl' )
+    self.__get( 'rki bundesland' )
     return self.__parse_sigle_statistics()
   def get_current_total_cases_2( self ):
     self.__default_query()
-    self.__statistics_query_type_field( 'sum', 'Fallzahl' )
-    self.__get( 'rki bundesland' )
+    self.__statistics_query_type_field( 'sum', 'cases' )
+    self.__get( 'rki landkreis' )
+    return self.__parse_sigle_statistics()
+  def get_current_total_cases_3( self ):
+    self.__default_query()
+    self.query['where']='NeuerFall IN(0, 1)'
+    self.__statistics_query_type_field( 'sum', 'AnzahlFall' )
+    self.__get( 'rki covid19' )
     return self.__parse_sigle_statistics()
 
   # New cases (delta within 24h)
@@ -129,13 +151,19 @@ class arcgis_hub:
   # Total amount of deaths reported until now
   def get_current_total_deaths( self ):
     self.__default_query()
-    self.__statistics_query_type_field( 'sum', 'deaths' )
-    self.__get( 'rki landkreis' )
+    self.__statistics_query_type_field( 'sum', 'Death' )
+    self.__get( 'rki bundesland' )
     return self.__parse_sigle_statistics()
   def get_current_total_deaths_2( self ):
     self.__default_query()
-    self.__statistics_query_type_field( 'sum', 'Death' )
-    self.__get( 'rki bundesland' )
+    self.__statistics_query_type_field( 'sum', 'deaths' )
+    self.__get( 'rki landkreis' )
+    return self.__parse_sigle_statistics()
+  def get_current_total_deaths_3( self ):
+    self.__default_query()
+    self.query['where']='NeuerTodesfall IN(0, 1)'
+    self.__statistics_query_type_field( 'sum', 'AnzahlTodesfall' )
+    self.__get( 'rki covid19' )
     return self.__parse_sigle_statistics()
 
   # New deaths (delta within 24h)
@@ -148,6 +176,12 @@ class arcgis_hub:
   
   # Total amount of cases recovered reported until now
   def get_current_total_recovered( self ):
+    self.__default_query()
+    self.query['where']='NeuGenesen IN(0, 1)'
+    self.__statistics_query_type_field( 'sum', 'AnzahlGenesen' )
+    self.__get( 'rki covid19' )
+    return self.__parse_sigle_statistics()
+  def get_current_total_recovered_2( self ):
     self.__default_query()
     self.__statistics_query_type_field( 'max', 'Genesen' )
     self.__get( 'rki covid19 recovered' )
@@ -197,25 +231,27 @@ class arcgis_hub:
     self.__get( 'rki covid19 refdate' )
     self.print()
 
-  # Get field names by requesting 10 complete records
-  def get_record_names( self ):
-    self.__default_query()
-    self.query['resultRecordCount']=10
-    self.query['orderByFields']='cases_per_100k desc'
-    self.__get( 'rki landkreis' )
-    self.print()
-  
-  def get_record_names_rki_covid19( self ):
+  # Get field names by requesting 1 record
+  def get_records( self, base='rki covid19' ):
     self.__default_query()
     self.query['resultRecordCount']=1
-    self.__get( 'rki covid19' )
-    self.print()
+    #self.query['orderByFields']='cases_per_100k desc'
+    self.__get( base )
+    #self.print()
+    self.pp.pprint( self.__parse_field_names() )
 
   def check( self ):
-    are_values_equal( "total cases", self.get_current_total_cases(), self.get_current_total_cases_2() )
-    are_values_equal( "total deaths", self.get_current_total_deaths(), self.get_current_total_deaths_2() )
-    assert abs(self.get_current_total_cases() - self.get_current_total_cases_2()) < 10
-    assert abs(self.get_current_total_deaths() - self.get_current_total_deaths_2()) < 10
+    cases = [ self.get_current_total_cases(), 
+              self.get_current_total_cases_2(),
+              self.get_current_total_cases_3() ]
+    are_values_equal( "total cases", cases )
+    deaths = [ self.get_current_total_deaths(),
+               self.get_current_total_deaths_2(),
+               self.get_current_total_deaths_3() ]
+    are_values_equal( "total deaths", deaths )
+    revovered = [ self.get_current_total_recovered(),
+                  self.get_current_total_recovered_2() ]
+    are_values_equal( "total recovered", deaths )
 
   def print( self ):
     self.pp.pprint( self.reply )
@@ -225,18 +261,21 @@ class arcgis_hub:
 def main():
   arcgis = arcgis_hub()
   arcgis.check()
-  print( "Current cases: ", arcgis.get_current_total_cases() )
-  print( "Current new cases: ", arcgis.get_current_new_cases() )
-  print( "Current deaths: ", arcgis.get_current_total_deaths() )
-  print( "Current new deaths: ", arcgis.get_current_new_deaths() )
-  print( "Current recovered: ", arcgis.get_current_total_recovered() )
+  #print( "Current cases: ", arcgis.get_current_total_cases() )
+  #print( "Current new cases: ", arcgis.get_current_new_cases() )
+  #print( "Current deaths: ", arcgis.get_current_total_deaths() )
+  #print( "Current new deaths: ", arcgis.get_current_new_deaths() )
+  #print( "Current recovered: ", arcgis.get_current_total_recovered() )
   #print( "Current new recovered: ", arcgis.get_current_new_recovered() )
   
   #arcgis.get_BL_per_bundesland()
   #arcgis.get_cases_per_100000_per_bundesland()
-  #arcgis.get_record_names()
-  #arcgis.get_record_names_rki_covid19()
-  arcgis.get_age_sex()
+  #arcgis.get_records( 'rki covid19' )
+  #arcgis.get_records( 'rki landkreis' )
+  #arcgis.get_records( 'rki bundesland' )
+  #arcgis.get_records( 'rki covid19 refdate' )
+  #arcgis.get_records( 'rki covid19 recovered' )
+  #arcgis.get_age_sex()
 
 if __name__ == '__main__':
   main()
