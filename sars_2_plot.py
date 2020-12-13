@@ -189,11 +189,11 @@ class classCovid:
     # Do some consistecy checks
     arc.check()
     # Total infected germans until "now"
-    arc_counts2 = arc.get_current_total_cases()
+    arc_counts2 = arc.get_current_total_cases_01()
     arc_count_delta = arc.get_current_new_cases()
     arc_counts1 = arc_counts2 - arc_count_delta
     # Total german victims until "now"
-    arc_deaths2 = arc.get_current_total_deaths()
+    arc_deaths2 = arc.get_current_total_deaths_01()
     arc_death_delta = arc.get_current_new_deaths()
     arc_deaths1 = arc_deaths2 - arc_death_delta
     # Check if these are new counts
@@ -352,56 +352,63 @@ class classCovid:
     #matplotlib.pyplot.show()
     mplexporter.show()
 
+  def plot_plotly( self ):
+    chart = plotly.express.line( self.counts, 
+        x="date", y="new", title="Infections/Victims SARS-CoV-2 Germany" )
+    chart.show()
+
 # For render_to_browser do
 #   update-alternatives --get-selections | grep www
 #   sudo update-alternatives --config x-www-browser
 # May still fail due to SVG content in HTML file.
 # => Do set default in file browser.
-  def plot_pygal( self ):
-    y1 = self.counts
-    y2 = diff_list( y1 )     # infections per day
-    y3 = diff_list( y2, 7 )  # change of infections per day within one week
-    y4 = mean_list( y2, 7 )  # 7 day mean of infections per day
-    y5 = mean_list( y3, 7 )  # 7 day mean of change
-    one_day = datetime.timedelta(days=1)  # Show day of cases occurring not of report
+def plot_pygal( result ):
+  y1 = result['counts']
+  y2 = diff_list( y1 )     # infections per day
+  y3 = diff_list( y2, 7 )  # change of infections per day within one week
+  y4 = mean_list( y2, 7 )  # 7 day mean of infections per day
+  y5 = mean_list( y3, 7 )  # 7 day mean of change
+  one_day = datetime.timedelta(days=1)  # Show day of cases occurring not of report
 
-    chart = pygal.Line()
-    chart.title = "Infections/Victims SARS-CoV-2 Germany"
-    chart.x_labels = [(i-one_day).strftime("%a, %d %b") for i in self.dates]
-    chart.add( '1. Δ inf./day',   y2 )
-    chart.add( '2. 7 day Ø of 1', y4 )
-    chart.add( '3. week Δ of 1',  y3 )
-    chart.add( '4. 7 day Ø of 3', y5 )
-    chart.render_to_file( 'covid.html' )
-    chart.render_in_browser()
-
-  def plot_plotly( self ):
-    chart = plotly.express.line( self.counts, 
-        x="date", y="new", title="Infections/Victims SARS-CoV-2 Germany" )
-    chart.show()
+  chart = pygal.Line()
+  chart.title = "Infections/Victims SARS-CoV-2 Germany"
+  chart.x_labels = [(i-one_day).strftime("%a, %d %b") for i in result['dates'] ]
+  chart.add( '1. Δ inf./day',   y2 )
+  chart.add( '2. 7 day Ø of 1', y4 )
+  chart.add( '3. week Δ of 1',  y3 )
+  chart.add( '4. 7 day Ø of 3', y5 )
+  chart.render_to_file( 'covid.html' )
+  chart.render_in_browser()
 
 def main():
   """
   Main function to initiate all other actions
   """
   # https://docs.python.org/3/library/argparse.html
-  parser = argparse.ArgumentParser( description='A template for python' )
+  parser = argparse.ArgumentParser( description='Ask german RKI for covid-19 cases and plot' )
   #parser.add_argument( "excel", help="Microsoft excel file", type=str )
   parser.add_argument( '-v', '--verbose', type=int, default=0, 
                        help='Level of verbose output.' )
   args = parser.parse_args()
 
-  covid = classCovid( args.verbose )
-  xlsx_link = covid.get_rki_internal_link(
-      'https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Kum_Tab.xlsx' )
-  xlsx_file = covid.get_file( xlsx_link )
-  covid.parse_rki_xls()
-  covid.get_latest_entry(
-      'https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Fallzahlen.html' )
-  covid.get_latest_arcgis()
-  #covid.plot_pyplot()
-  covid.plot_pygal()
-  #covid.plot_plotly()
+  if True:
+    covid = classCovid( args.verbose )
+    xlsx_link = covid.get_rki_internal_link(
+        'https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Kum_Tab.xlsx' )
+    xlsx_file = covid.get_file( xlsx_link )
+    covid.parse_rki_xls()
+    covid.get_latest_entry(
+        'https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Fallzahlen.html' )
+    covid.get_latest_arcgis()
+    #covid.plot_pyplot()
+    plot_pygal( { 'counts':covid.counts, 'dates':covid.dates } )
+    #covid.plot_plotly()
+  else:
+    # Erkrankung bzw. Meldedatum
+    arcgis = arcgis_hub.arcgis_hub()
+    arcgis.check()
+    result = arcgis.get_cases_per_day_corrected()
+    plot_pygal( result )
 
 if __name__ == '__main__':
   main()
